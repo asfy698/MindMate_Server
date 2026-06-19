@@ -10,11 +10,14 @@ import os
 import face_recognition
 import pickle
 import sys
+import platform
+from picamera2 import Picamera2
+print(platform.machine())
 print(sys.version)
 
 pygame.mixer.init()
 
-SERVER = "http://127.0.0.1:8000"
+SERVER = "http://192.168.1.4:8000"
 
 current_emotion = "none"
 current_confidence = 0
@@ -38,18 +41,15 @@ def emotion_loop():
     global current_emotion
     global current_confidence
 
-    cap = cv2.VideoCapture(0)
+    picam2 = Picamera2()
+    picam2.start()
 
-    if not cap.isOpened():
-        print("Camera failed to open")
-        return
+    print("Camera Started")
 
     while True:
 
-        ret, frame = cap.read()
-
-        if not ret:
-            continue
+        frame = picam2.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         try:
 
