@@ -11,7 +11,10 @@ import face_recognition
 import pickle
 import sys
 import platform
+import psutil
 from picamera2 import Picamera2
+from libcamera import Transform
+
 print(platform.machine())
 print(sys.version)
 
@@ -36,48 +39,112 @@ print("===================================")
 print("MindMate Client Started")
 print("===================================")
 
-def emotion_loop():
+current_emotion = "none"
+current_confidence = 0
 
+emotion_interval = 0.5
+last_emotion_time = 0
+
+all_emotions = {}
+latency = 0
+
+def emotion_loop():
+    global all_emotions
+    global latency
+    global last_emotion_time
     global current_emotion
     global current_confidence
 
-    picam2 = Picamera2()
-    picam2.start()
+    try:
+        picam2 = Picamera2()
+        config = picam2.create_preview_configuration(
+            # main={"size": (640, 480)},
+            # main={"size": (1280,720)},
+            # main={"size": (1280,720)},
+            
+            # controls={"ScalerCrop": (0, 0, 3280, 2464)},
+            transform=Transform()
+        )
+        picam2.configure(config)
+        picam2.start()
+    except Exception as e:
+        print("Camera Init Error:", e)
+        return
 
     print("Camera Started")
-
+    fps_counter = 0
+    fps_start = time.time()
+    fps = 0
+    perf_log_every = 2.0
+    last_perf_log = 0
+    print(picam2.camera_properties)
     while True:
 
+        cap_start = time.time()
         frame = picam2.capture_array()
+        capture_time = (time.time() - cap_start) * 1000
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
+        fps_counter += 1
+
+        if time.time() - fps_start >= 1:
+            fps = fps_counter
+            fps_counter = 0
+            fps_start = time.time()
         try:
+           
+            latency = latency
 
-            cv2.imwrite("frame.jpg", frame)
+            if time.time() - last_emotion_time > emotion_interval:
+                
+                cpu = psutil.cpu_percent()
+                ram = psutil.virtual_memory().percent
 
-            with open("frame.jpg", "rb") as f:
+                last_emotion_time = time.time()
+
+                emotion_frame = cv2.resize(
+                    frame,
+                    (320, 240)
+                )
+
+                _, img_encoded = cv2.imencode(
+                    ".jpg",
+                    emotion_frame,
+                    [cv2.IMWRITE_JPEG_QUALITY, 50]
+                )
+
+                t0 = time.time()
 
                 response = requests.post(
                     f"{SERVER}/emotion",
-                    files={"file": f}
+                    files={
+                        "file": (
+                            "frame.jpg",
+                            img_encoded.tobytes(),
+                            "image/jpeg"
+                        )
+                    },
+                    timeout=5
                 )
 
-            data = response.json()
+                latency = (time.time() - t0) * 1000
 
-            current_emotion = data.get(
-                "emotion",
-                "none"
-            )
+                data = response.json()
 
-            current_confidence = data.get(
-                "confidence",
-                0
-            )
+                current_emotion = data.get(
+                    "emotion",
+                    current_emotion
+                )
 
-            all_emotions = data.get(
-                "all_emotions",
-                {}
-            )
+                current_confidence = data.get(
+                    "confidence",
+                    current_confidence
+                )
+
+                all_emotions = data.get(
+                    "all_emotions",
+                    all_emotions
+                )
 
             y_pos = 40
 
@@ -105,6 +172,54 @@ def emotion_loop():
                 2
             )
 
+            cv2.putText(
+                frame,
+                f"FPS: {fps}",
+                (20, 460),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"Server: {latency:.0f} ms",
+                (20, 430),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 0),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"Capture: {capture_time:.0f} ms",
+                (20, 400),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"CPU:{cpu:.0f}% RAM:{ram:.0f}%",
+                (20, 370),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
+            if time.time() - last_perf_log >= perf_log_every:
+                last_perf_log = time.time()
+
+                print(
+                    f"Perf | FPS={fps} | Capture={capture_time:.1f}ms | "
+                    f"Server={latency:.1f}ms | CPU={cpu:.1f}% | RAM={ram:.1f}%"
+                )
+
             if (
                 current_emotion in ["sad", "fear", "angry"]
                 and current_confidence >= 80
@@ -115,7 +230,8 @@ def emotion_loop():
                     data={
                         "emotion": current_emotion,
                         "confidence": current_confidence
-                    }
+                    },
+                    timeout=5
                 )
 
             cv2.imshow(
@@ -129,8 +245,6 @@ def emotion_loop():
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-
-        time.sleep(1)
 
 threading.Thread(
     target=emotion_loop,
@@ -265,9 +379,6 @@ while True:
                 f"{SERVER}/stop"
             )
 
-        print(
-            f"\nEmotion: {current_emotion} ({current_confidence}%)"
-        )
 
         print(
             "\nYou:",
