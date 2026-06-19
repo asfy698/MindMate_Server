@@ -60,7 +60,9 @@ def emotion_loop():
         config = picam2.create_preview_configuration(
             # main={"size": (640, 480)},
             # main={"size": (1280,720)},
-            # main={"size": (1280,720)},
+            # main={"size": (1920, 1080)},
+            main={"size": (1640, 1232)},
+
             
             # controls={"ScalerCrop": (0, 0, 3280, 2464)},
             transform=Transform()
@@ -124,7 +126,7 @@ def emotion_loop():
                             "image/jpeg"
                         )
                     },
-                    timeout=5
+                    timeout=20  
                 )
 
                 latency = (time.time() - t0) * 1000
