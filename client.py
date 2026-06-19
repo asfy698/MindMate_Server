@@ -1,5 +1,15 @@
-
-
+import requests
+import sounddevice as sd
+import cv2
+import threading
+from scipy.io.wavfile import write
+from gtts import gTTS
+import pygame
+import time
+import os
+import face_recognition
+import pickle
+import sys
 print(sys.version)
 
 pygame.mixer.init()
