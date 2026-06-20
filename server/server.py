@@ -39,6 +39,7 @@ whisper_model = WhisperModel(
 # Face Emotion Recognition
 emotion_detector = FER(mtcnn=False)
 
+
 #Routes
 @app.get("/")
 def root():
