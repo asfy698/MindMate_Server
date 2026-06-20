@@ -17,7 +17,7 @@ PARENT_WHATSAPP_NUMBER = ""
 ESP32_IP = "192.168.1.15"
 
 llm = Llama(
-    model_path=r"C:\MindMate_Server\models\gemma-4-E2B-it-UD-Q4_K_XL.gguf",
+    model_path=r"C:\models\gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf",
     n_ctx=4096,
     n_gpu_layers=-1,
     verbose=False
