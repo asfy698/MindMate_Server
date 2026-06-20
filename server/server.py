@@ -8,12 +8,16 @@ import numpy as np
 from fer import FER
 import requests
 from twilio.rest import Client
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
-TWILIO_ACCOUNT_SID = ""
-TWILIO_AUTH_TOKEN = ""
-TWILIO_WHATSAPP_NUMBER = ""
-PARENT_WHATSAPP_NUMBER = ""
-ESP32_IP = "192.168.1.15"
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
+PARENT_WHATSAPP_NUMBER = os.getenv("PARENT_WHATSAPP_NUMBER")
+
+ESP32_IP = os.getenv("ESP32_IP")
 
 app = FastAPI()
 
