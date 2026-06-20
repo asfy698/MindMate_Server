@@ -12,8 +12,12 @@ import pickle
 import sys
 import platform
 import psutil
-from picamera2 import Picamera2
-from libcamera import Transform
+
+IS_PI = platform.system() == "Linux"
+
+if IS_PI:
+    from picamera2 import Picamera2
+    from libcamera import Transform
 
 print(platform.machine())
 print(sys.version)
@@ -56,49 +60,74 @@ def emotion_loop():
     global current_confidence
 
     try:
-        picam2 = Picamera2()
-        config = picam2.create_preview_configuration(
-            # main={"size": (640, 480)},
-            # main={"size": (1280,720)},
-            # main={"size": (1920, 1080)},
-            main={"size": (1640, 1232)},
+        if IS_PI:
+            picam2 = Picamera2()
 
-            
-            # controls={"ScalerCrop": (0, 0, 3280, 2464)},
-            transform=Transform()
-        )
-        picam2.configure(config)
-        picam2.start()
+            config = picam2.create_preview_configuration(
+                main={"size": (1640, 1232)},
+                transform=Transform()
+            )
+
+            picam2.configure(config)
+            picam2.start()
+
+            print("Pi Camera Started")
+            print(picam2.camera_properties)
+
+        else:
+            cap = cv2.VideoCapture(0)
+
+            if not cap.isOpened():
+                print("Cannot open webcam")
+                return
+
+            print("Windows Webcam Started")
+
     except Exception as e:
         print("Camera Init Error:", e)
         return
 
-    print("Camera Started")
     fps_counter = 0
     fps_start = time.time()
     fps = 0
+
     perf_log_every = 2.0
     last_perf_log = 0
-    print(picam2.camera_properties)
+
+    cpu = 0
+    ram = 0
+
     while True:
 
-        cap_start = time.time()
-        frame = picam2.capture_array()
-        capture_time = (time.time() - cap_start) * 1000
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-        fps_counter += 1
-
-        if time.time() - fps_start >= 1:
-            fps = fps_counter
-            fps_counter = 0
-            fps_start = time.time()
         try:
-           
-            latency = latency
+
+            cap_start = time.time()
+
+            if IS_PI:
+                frame = picam2.capture_array()
+                frame = cv2.cvtColor(
+                    frame,
+                    cv2.COLOR_RGB2BGR
+                )
+            else:
+                ret, frame = cap.read()
+
+                if not ret:
+                    continue
+
+            capture_time = (
+                time.time() - cap_start
+            ) * 1000
+
+            fps_counter += 1
+
+            if time.time() - fps_start >= 1:
+                fps = fps_counter
+                fps_counter = 0
+                fps_start = time.time()
 
             if time.time() - last_emotion_time > emotion_interval:
-                
+
                 cpu = psutil.cpu_percent()
                 ram = psutil.virtual_memory().percent
 
@@ -126,10 +155,12 @@ def emotion_loop():
                             "image/jpeg"
                         )
                     },
-                    timeout=20  
+                    timeout=20
                 )
 
-                latency = (time.time() - t0) * 1000
+                latency = (
+                    time.time() - t0
+                ) * 1000
 
                 data = response.json()
 
@@ -215,11 +246,15 @@ def emotion_loop():
             )
 
             if time.time() - last_perf_log >= perf_log_every:
+
                 last_perf_log = time.time()
 
                 print(
-                    f"Perf | FPS={fps} | Capture={capture_time:.1f}ms | "
-                    f"Server={latency:.1f}ms | CPU={cpu:.1f}% | RAM={ram:.1f}%"
+                    f"Perf | FPS={fps} | "
+                    f"Capture={capture_time:.1f}ms | "
+                    f"Server={latency:.1f}ms | "
+                    f"CPU={cpu:.1f}% | "
+                    f"RAM={ram:.1f}%"
                 )
 
             if (
@@ -227,14 +262,17 @@ def emotion_loop():
                 and current_confidence >= 80
             ):
 
-                requests.post(
-                    f"{SERVER}/send_alert",
-                    data={
-                        "emotion": current_emotion,
-                        "confidence": current_confidence
-                    },
-                    timeout=5
-                )
+                try:
+                    requests.post(
+                        f"{SERVER}/send_alert",
+                        data={
+                            "emotion": current_emotion,
+                            "confidence": current_confidence
+                        },
+                        timeout=5
+                    )
+                except:
+                    pass
 
             cv2.imshow(
                 "MindMate Emotion",
@@ -242,11 +280,15 @@ def emotion_loop():
             )
 
         except Exception as e:
-
             print("Emotion Error:", e)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+
+    if not IS_PI:
+        cap.release()
+
+    cv2.destroyAllWindows()
 
 threading.Thread(
     target=emotion_loop,
@@ -310,7 +352,6 @@ except Exception as e:
 print("\nConversation Mode Activated")
 
 while True:
-
     try:
 
         print("\nListening...")
@@ -355,63 +396,81 @@ while True:
             ""
         )
 
-        reply_lower = reply.lower()
+        cmd = transcript.lower().strip()
+        print("TRANSCRIPT =", repr(cmd))
 
-        if "move forward" in reply_lower:
+        if "move forward" in cmd:
+            print("CALLING /move_forward")
+            r = requests.post(f"{SERVER}/move_forward")
+            print("SERVER RESPONSE:", r.text)
 
-            requests.post(
-                f"{SERVER}/move_forward"
-            )
+        elif "move backward" in cmd:
 
-        elif "move backward" in reply_lower:
-
-            requests.post(
-                f"{SERVER}/move_backward"
-            )
+            print("CALLING /move_backward")
+            r = requests.post(f"{SERVER}/move_backward")
+            print("SERVER RESPONSE:", r.text)
 
         else:
 
-            requests.post(
-                f"{SERVER}/stop"
-            )
+            print("CALLING /stop")
+            r = requests.post(f"{SERVER}/stop")
+            print("SERVER RESPONSE:", r.text)
+
+    #     if "move forward" in transcript.lower().strip():
+
+    #         requests.post(
+    #             f"{SERVER}/move_forward"
+    #         )
+
+    #     elif "move backward" in transcript.lower().strip():
+
+    #         requests.post(
+    #             f"{SERVER}/move_backward"
+    #         )
+
+    #     else:
+
+    #         requests.post(
+    #             f"{SERVER}/stop"
+    #         )
 
 
-        print(
-            "\nYou:",
-            transcript
-        )
+    #     print(
+    #         "\nYou:",
+    #         transcript
+    #     )
 
-        print(
-            "\nMindMate:",
-            reply
-        )
+    #     print(
+    #         "\nMindMate:",
+    #         reply
+    #     )
 
-        if reply.strip():
+    #     if reply.strip():
 
-            filename = f"response_{int(time.time())}.mp3"
+    #         filename = f"response_{int(time.time())}.mp3"
 
-            tts = gTTS(
-                text=reply,
-                lang="en"
-            )
+    #         tts = gTTS(
+    #             text=reply,
+    #             lang="en"
+    #         )
 
-            tts.save(
-                filename
-            )
+    #         tts.save(
+    #             filename
+    #         )
 
-            pygame.mixer.music.load(
-                filename
-            )
+    #         pygame.mixer.music.load(
+    #             filename
+    #         )
 
-            pygame.mixer.music.play()
+    #         pygame.mixer.music.play()
 
-            while pygame.mixer.music.get_busy():
-                time.sleep(0.1)
+    #         while pygame.mixer.music.get_busy():
+    #             time.sleep(0.1)
 
-            try:
-                os.remove(filename)
-            except:
-                pass
+    #         try:
+    #             os.remove(filename)
+    #         except:
+    #             pass
 
     except KeyboardInterrupt:
 

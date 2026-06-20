@@ -14,7 +14,7 @@ TWILIO_AUTH_TOKEN = ""
 TWILIO_WHATSAPP_NUMBER = ""
 PARENT_WHATSAPP_NUMBER = ""
 
-ESP32_IP = "192.168.1.15"
+ESP32_IP = "192.168.1.10"
 
 llm = Llama(
     model_path=r"C:\models\gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf",
@@ -165,7 +165,7 @@ async def chat(
         reply = reply.strip()
 
         if reply == "":
-            reply = "Thank you for talking with me. I am always here to help."
+            reply = "Thank you for talking wit  h me. I am always here to help."
 
         print("REPLY:", repr(reply))
         print("===========================\n")
@@ -211,26 +211,33 @@ async def send_alert(
 @app.post("/move_forward")
 async def move_forward():
 
-    requests.get(
-        f"http://{ESP32_IP}/forward"
+    print("MOVE FORWARD RECEIVED")
+
+    r = requests.get(
+        f"http://{ESP32_IP}/forward",
+        timeout=5
     )
 
-    return {
-        "status": "forward"
-    }
+    print("ESP STATUS:", r.status_code)
+    print("ESP RESPONSE:", r.text)
+
+    return {"status": "forward"}
 
 
 @app.post("/move_backward")
 async def move_backward():
 
-    requests.get(
-        f"http://{ESP32_IP}/backward"
+    print("MOVE BACKWARD RECEIVED")
+
+    r = requests.get(
+        f"http://{ESP32_IP}/backward",
+        timeout=5
     )
 
-    return {
-        "status": "backward"
-    }
+    print("ESP STATUS:", r.status_code)
+    print("ESP RESPONSE:", r.text)
 
+    return {"status": "backward"}
 
 @app.post("/stop")
 async def stop_robot():
