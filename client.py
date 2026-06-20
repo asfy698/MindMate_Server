@@ -255,20 +255,14 @@ threading.Thread(
 
 print("\nCamera Started")
 
-print("\nPress S to capture emotion...")
+print("\nCapturing emotion for 10 seconds...")
 
-while True:
+time.sleep(10)
 
-    key = input().lower().strip()
-
-    if key == "s":
-
-        print(
-            f"\nDetected Emotion: {current_emotion} "
-            f"({current_confidence:.0f}%)"
-        )
-
-        break
+print(
+    f"\nDetected Emotion: {current_emotion} "
+    f"({current_confidence:.0f}%)"
+)
 
 try:
 
