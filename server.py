@@ -14,7 +14,7 @@ TWILIO_AUTH_TOKEN = ""
 TWILIO_WHATSAPP_NUMBER = ""
 PARENT_WHATSAPP_NUMBER = ""
 
-ESP32_IP = "192.168.1.100"
+ESP32_IP = "192.168.1.15"
 
 llm = Llama(
     model_path=r"C:\MindMate_Server\models\gemma-4-E2B-it-UD-Q4_K_XL.gguf",
