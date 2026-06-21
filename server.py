@@ -1,3 +1,6 @@
+"""
+uvicorn server:app --host 0.0.0.0 --port 8000
+"""
 from fastapi import FastAPI, UploadFile, File, Form
 from llama_cpp import Llama
 from faster_whisper import WhisperModel
@@ -14,7 +17,8 @@ TWILIO_AUTH_TOKEN = ""
 TWILIO_WHATSAPP_NUMBER = ""
 PARENT_WHATSAPP_NUMBER = ""
 
-ESP32_IP = "192.168.1.10"
+# ESP32_IP = "192.168.1.10"
+ESP32_IP = "192.168.137.244"
 
 llm = Llama(
     model_path=r"C:\models\gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf",
@@ -223,21 +227,45 @@ async def move_forward():
 
     return {"status": "forward"}
 
-
 @app.post("/move_backward")
 async def move_backward():
 
-    print("MOVE BACKWARD RECEIVED")
+    try:
+        print("MOVE BACKWARD RECEIVED")
 
-    r = requests.get(
-        f"http://{ESP32_IP}/backward",
-        timeout=5
-    )
+        r = requests.get(
+            f"http://{ESP32_IP}/backward",
+            timeout=5
+        )
 
-    print("ESP STATUS:", r.status_code)
-    print("ESP RESPONSE:", r.text)
+        print("ESP STATUS:", r.status_code)
+        print("ESP RESPONSE:", r.text)
 
-    return {"status": "backward"}
+        return {"status": "backward"}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+# @app.post("/move_backward")
+# async def move_backward():
+
+#     print("MOVE BACKWARD RECEIVED")
+
+#     r = requests.get(
+#         f"http://{ESP32_IP}/backward",
+#         timeout=5
+#     )
+
+#     print("ESP STATUS:", r.status_code)
+#     print("ESP RESPONSE:", r.text)
+
+#     return {"status": "backward"}
 
 @app.post("/stop")
 async def stop_robot():

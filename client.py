@@ -24,7 +24,8 @@ print(sys.version)
 
 pygame.mixer.init()
 
-SERVER = "http://192.168.1.4:8000"
+#SERVER = "http://192.168.1.4:8000"
+SERVER = "http://10.235.77.77:8000"
 
 current_emotion = "none"
 current_confidence = 0
